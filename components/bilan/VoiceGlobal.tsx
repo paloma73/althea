@@ -3,11 +3,24 @@
 import { useState, useRef } from 'react'
 import { Mic, MicOff, Loader2 } from 'lucide-react'
 
-// Typage minimal pour l'API Web Speech
+// Typage minimal pour l'API Web Speech (non standard, absent des lib DOM TypeScript)
+interface ISpeechRecognition extends EventTarget {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  start(): void
+  stop(): void
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: ((event: Event) => void) | null
+  onend: (() => void) | null
+}
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList
+}
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
+    SpeechRecognition: new () => ISpeechRecognition
+    webkitSpeechRecognition: new () => ISpeechRecognition
   }
 }
 
@@ -22,7 +35,7 @@ export default function VoiceGlobal({ value, onChange }: Props) {
     typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
   )
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<ISpeechRecognition | null>(null)
 
   function startRecording() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -33,10 +46,10 @@ export default function VoiceGlobal({ value, onChange }: Props) {
     recognition.continuous = true
     recognition.interimResults = false
 
-    recognition.onresult = (event) => {
-      const results = Array.from(event.results)
-        .filter(r => r.isFinal)
-        .map(r => r[0].transcript)
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const results = Array.from(event.results as unknown as SpeechRecognitionResult[])
+        .filter((r: SpeechRecognitionResult) => r.isFinal)
+        .map((r: SpeechRecognitionResult) => r[0].transcript)
         .join(' ')
 
       if (results) {
