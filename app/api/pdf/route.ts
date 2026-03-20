@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import pdfParse from 'pdf-parse'
 
-export const config = { api: { bodyParser: false } }
+// Next.js 14 App Router — désactive le body parser par défaut pour FormData
+export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   const supabase = createClient()
