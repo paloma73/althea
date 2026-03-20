@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+    /* Bleu médical sobre */
+    --primary: 213 60% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 213 20% 94%;
+    --secondary-foreground: 213 60% 30%;
+    --muted: 213 15% 94%;
+    --muted-foreground: 213 15% 50%;
+    --accent: 213 20% 90%;
+    --accent-foreground: 213 60% 30%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 15% 88%;
+    --input: 213 15% 88%;
+    --ring: 213 60% 35%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Scrollbar sobre */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+/* Textarea sans outline visible par défaut */
+textarea:focus {
+  outline: none;
+}
+
+/* Animation douce pour les transitions de page */
+.page-fade {
+  animation: pageFade 0.2s ease-in;
+}
+
+@keyframes pageFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

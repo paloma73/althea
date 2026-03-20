@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(command -v npm)",
+      "Bash(npm -v)",
+      "Read(//c/Program Files/nodejs/**)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" run dev)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" install)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(npm install:*)",
+      "Bash(curl -s http://localhost:3001/login)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/login)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(node -e \"require\\(''autoprefixer''\\); console.log\\(''ok''\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 19620)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/login)",
+      "Read(//tmp/**)",
+      "Bash(curl -v http://localhost:3001/login)",
+      "Bash(taskkill //F //PID 34232)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" install docx --prefix \"C:/althea\")",
+      "Bash(\"/c/Program Files/nodejs/npx.cmd\" tsc --noEmit --project \"C:/althea/tsconfig.json\")",
+      "Bash(cmd /c \"C:\\\\progra~1\\\\nodejs\\\\npx.cmd tsc --noEmit 2>&1\")",
+      "Bash(cmd /c \"C:\\\\progra~1\\\\nodejs\\\\node.exe -e \"\"const d = require\\(''C:/althea/node_modules/docx''\\); console.log\\(Object.keys\\(d\\).filter\\(k => [''Document'',''Packer'',''Paragraph'',''TextRun'',''HeadingLevel'',''AlignmentType'',''BorderStyle'',''PageNumber'',''Footer'',''Header'',''SectionType'',''WidthType'',''Table'',''TableRow'',''TableCell''].includes\\(k\\)\\).join\\('', ''\\)\\)\"\"\")",
+      "Bash(cmd /c \"C:\\\\progra~1\\\\nodejs\\\\node.exe -e \"\"const d = require\\(''./node_modules/docx''\\); const keys = [''Document'',''Packer'',''Paragraph'',''TextRun'',''HeadingLevel'',''AlignmentType'',''BorderStyle'',''PageNumber'',''Footer'',''Header'',''SectionType'',''WidthType'',''Table'',''TableRow'',''TableCell'']; keys.forEach\\(k => console.log\\(k + '': '' + \\(k in d\\)\\)\\)\"\" 2>&1\")",
+      "Bash(cmd /c \"node -e \"\"try { const d = require\\(''C:/althea/node_modules/docx''\\); console.log\\(''SectionType:'', typeof d.SectionType\\); } catch\\(e\\) { console.log\\(e.message\\); }\"\" 2>&1\")",
+      "Bash(export 'PATH=/c/Program Files/nodejs:$PATH')",
+      "Bash(npm list:*)",
+      "Bash(ls /c/althea/.env*)",
+      "Bash(git init:*)",
+      "Bash(git --version)",
+      "Bash(git add:*)"
+    ]
+  }
+}
