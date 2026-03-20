@@ -93,7 +93,7 @@ export default async function PatientPage({ params }: Props) {
 
         {bilans && bilans.length > 0 ? (
           <div className="space-y-2">
-            {bilans.map((bilan: Bilan) => (
+            {bilans.map((bilan) => (
               <Link
                 key={bilan.id}
                 href={`/patients/${patient.id}/bilan/${bilan.id}`}
