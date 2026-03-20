@@ -17,7 +17,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!doc) return NextResponse.json({ error: 'Document introuvable' }, { status: 404 })
 
   // Sécurité : l'utilisateur doit être propriétaire du bilan parent
-  const bilan = doc.bilan as { user_id: string } | null
+  const bilanRaw = doc.bilan
+  const bilan = (Array.isArray(bilanRaw) ? bilanRaw[0] : bilanRaw) as { user_id: string } | null
   if (!bilan || bilan.user_id !== user.id) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
   }
