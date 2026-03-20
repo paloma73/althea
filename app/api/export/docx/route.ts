@@ -374,7 +374,7 @@ export async function GET(req: Request) {
     .replace(/\s+/g, '_')
     .replace(/[^a-z0-9_.-]/g, '')
 
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
