@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Mic, MicOff, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -9,98 +9,97 @@ interface Props {
   label?: string
 }
 
-// Typage minimal pour l'API Web Speech (non standard, absent des lib DOM TypeScript)
-interface ISpeechRecognition extends EventTarget {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  start(): void
-  stop(): void
-  onresult: ((event: ISpeechRecognitionEvent) => void) | null
-  onerror: ((event: Event) => void) | null
-  onend: (() => void) | null
-}
-interface ISpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList
-}
-declare global {
-  interface Window {
-    SpeechRecognition: new () => ISpeechRecognition
-    webkitSpeechRecognition: new () => ISpeechRecognition
-  }
-}
-
 export default function VoiceInput({ onTranscript, label = 'Dicter' }: Props) {
-  const [recording, setRecording] = useState(false)
-  const [supported] = useState(() =>
-    typeof window !== 'undefined' &&
-    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
-  )
-  const recognitionRef = useRef<ISpeechRecognition | null>(null)
+  const [recording,   setRecording]   = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [error, setError]             = useState<string | null>(null)
 
-  function startRecording() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SR()
-    recognitionRef.current = recognition
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef        = useRef<Blob[]>([])
+  const streamRef        = useRef<MediaStream | null>(null)
 
-    recognition.lang = 'fr-FR'
-    recognition.continuous = true
-    recognition.interimResults = false
+  async function startRecording() {
+    setError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
 
-    recognition.onresult = (event: ISpeechRecognitionEvent) => {
-      const results = Array.from(event.results as unknown as SpeechRecognitionResult[])
-        .filter((r: SpeechRecognitionResult) => r.isFinal)
-        .map((r: SpeechRecognitionResult) => r[0].transcript)
-        .join(' ')
+      let recorder: MediaRecorder
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      } catch {
+        recorder = new MediaRecorder(stream)
+      }
+      chunksRef.current = []
+      mediaRecorderRef.current = recorder
 
-      if (results) onTranscript(results)
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        if (chunksRef.current.length === 0) return
+
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        chunksRef.current = []
+        setTranscribing(true)
+        try {
+          const form = new FormData()
+          form.append('audio', blob, 'audio.webm')
+          const res = await fetch('/api/transcribe', { method: 'POST', body: form })
+          if (!res.ok) throw new Error()
+          const data = await res.json()
+          if (data.text) onTranscript(data.text)
+        } catch {
+          setError('Erreur transcription')
+        } finally {
+          setTranscribing(false)
+        }
+      }
+
+      recorder.start(1000)
+      setRecording(true)
+    } catch {
+      setError('Micro inaccessible')
     }
-
-    recognition.onerror = () => setRecording(false)
-    recognition.onend = () => setRecording(false)
-
-    recognition.start()
-    setRecording(true)
   }
 
   function stopRecording() {
-    recognitionRef.current?.stop()
+    mediaRecorderRef.current?.stop()
     setRecording(false)
   }
 
-  if (!supported) return null
+  // Nettoyage
+  useEffect(() => {
+    return () => { streamRef.current?.getTracks().forEach(t => t.stop()) }
+  }, [])
 
   return (
     <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={recording ? stopRecording : startRecording}
+        disabled={transcribing}
         className={cn(
           'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
           recording
             ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100 animate-pulse'
-            : 'bg-muted border-border text-muted-foreground hover:text-foreground hover:bg-accent'
+            : transcribing
+              ? 'bg-muted border-border text-muted-foreground opacity-60 cursor-not-allowed'
+              : 'bg-muted border-border text-muted-foreground hover:text-foreground hover:bg-accent'
         )}
-        title={recording ? 'Arrêter la dictée' : label}
+        title={recording ? 'Arrêter' : label}
       >
-        {recording ? (
-          <>
-            <MicOff className="w-3.5 h-3.5" />
-            Arrêter
-          </>
+        {transcribing ? (
+          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Transcription…</>
+        ) : recording ? (
+          <><MicOff className="w-3.5 h-3.5" /> Arrêter</>
         ) : (
-          <>
-            <Mic className="w-3.5 h-3.5" />
-            {label}
-          </>
+          <><Mic className="w-3.5 h-3.5" /> {label}</>
         )}
       </button>
-      {recording && (
-        <span className="text-xs text-red-500 flex items-center gap-1">
-          <Loader2 className="w-3 h-3 animate-spin" />
-          Écoute en cours…
-        </span>
-      )}
+      {error && <span className="text-xs text-red-500">{error}</span>}
     </div>
   )
 }

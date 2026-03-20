@@ -4,7 +4,7 @@ import OpenAI from 'openai'
 import { toFile } from 'openai'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 120
 
 export async function POST(req: Request) {
   const supabase = createClient()
