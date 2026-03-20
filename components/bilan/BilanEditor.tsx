@@ -9,6 +9,7 @@ import { formatDateLong } from '@/lib/utils'
 import BilanFormSection from './BilanFormSection'
 import VoiceInput from './VoiceInput'
 import VoiceGlobal from './VoiceGlobal'
+import VoiceRecorder from './VoiceRecorder'
 import TemplateChips from './TemplateChips'
 import PdfUploader from '../pdf/PdfUploader'
 import { TEMPLATES, ANTECEDENTS_TEMPLATES } from '@/lib/templates'
@@ -296,9 +297,9 @@ export default function BilanEditor({ patient, bilan }: Props) {
             </div>
           </div>
 
-          {/* ── MODE DICTÉE GLOBALE ── */}
+          {/* ── MODE DICTÉE GLOBALE — longue durée via Whisper ── */}
           {inputMode === 'dictee' && (
-            <VoiceGlobal
+            <VoiceRecorder
               value={formData.notes_libres}
               onChange={v => updateField('notes_libres', v)}
             />
