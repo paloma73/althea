@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-  AlignmentType,
-  BorderStyle,
-  PageNumber,
-  Footer,
-  Header,
-  SectionType,
+  Document, Packer, Paragraph, TextRun, AlignmentType,
+  BorderStyle, PageNumber, Footer, Header, SectionType,
+  Table, TableRow, TableCell, WidthType, ShadingType,
 } from 'docx'
 
 export async function GET(req: Request) {
@@ -21,12 +13,8 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
   const bilan_id = searchParams.get('bilan_id')
+  if (!bilan_id) return NextResponse.json({ error: 'bilan_id requis' }, { status: 400 })
 
-  if (!bilan_id) {
-    return NextResponse.json({ error: 'bilan_id requis' }, { status: 400 })
-  }
-
-  // Récupère le bilan avec patient
   const { data: bilan, error: bilanError } = await supabase
     .from('bilans')
     .select('*, patient:patients(*)')
@@ -34,310 +22,360 @@ export async function GET(req: Request) {
     .eq('user_id', user.id)
     .single()
 
-  if (bilanError || !bilan) {
-    return NextResponse.json({ error: 'Bilan introuvable' }, { status: 404 })
-  }
+  if (bilanError || !bilan) return NextResponse.json({ error: 'Bilan introuvable' }, { status: 404 })
 
   const patient = bilan.patient
-  if (!patient) {
-    return NextResponse.json({ error: 'Patient introuvable' }, { status: 404 })
-  }
+  if (!patient) return NextResponse.json({ error: 'Patient introuvable' }, { status: 404 })
 
-  // Récupère les paramètres praticien
-  const { data: praticienSettings } = await supabase
+  const { data: ps } = await supabase
     .from('praticien_settings')
     .select('*')
     .eq('user_id', user.id)
     .single()
 
-  const f = bilan.form_data
+  // ── Données de base ──
   const dateBilan = new Date(bilan.date_bilan).toLocaleDateString('fr-FR', {
-    day: '2-digit', month: 'long', year: 'numeric',
+    day: 'numeric', month: 'long', year: 'numeric',
   })
+  const ville = ps?.adresse_cabinet?.split(' ').slice(-2).join(' ') ?? 'le'
 
   const age = patient.date_naissance
-    ? `${new Date().getFullYear() - new Date(patient.date_naissance).getFullYear()} ans`
+    ? new Date().getFullYear() - new Date(patient.date_naissance).getFullYear()
     : null
 
-  const dob = patient.date_naissance
-    ? new Date(patient.date_naissance).toLocaleDateString('fr-FR')
-    : null
+  const nomPraticien = [ps?.titre, ps?.prenom, ps?.nom].filter(Boolean).join(' ')
+  const nomCabinet = ps?.nom_cabinet ?? ''
+  const tagline = ps?.tagline ?? ''
+  const civilite = patient.civilite ?? ''
+  const patientLabel = [civilite, patient.prenom, patient.nom.toUpperCase()].filter(Boolean).join(' ')
 
-  // Helper : crée un paragraphe de titre de section
-  function sectionTitle(text: string): Paragraph {
-    return new Paragraph({
-      text,
-      heading: HeadingLevel.HEADING_2,
-      spacing: { before: 320, after: 120 },
-      border: {
-        bottom: { color: '3B82F6', size: 4, style: BorderStyle.SINGLE },
-      },
-    })
+  // ── Couleurs ──
+  const TEAL = '1A7F9E'
+  const NAVY = '0B2E4A'
+  const TEAL_LIGHT = 'DDF0F5'
+
+  // ── Helpers ──
+  function sp(n: number): Paragraph {
+    return new Paragraph({ text: '', spacing: { after: n } })
   }
 
-  // Helper : crée un paragraphe de label+valeur
-  function labelValue(label: string, value: string): Paragraph {
+  function sectionHeader(text: string): Paragraph {
     return new Paragraph({
-      spacing: { after: 60 },
+      spacing: { before: 200, after: 100 },
+      shading: { type: ShadingType.SOLID, color: TEAL_LIGHT, fill: TEAL_LIGHT },
       children: [
-        new TextRun({ text: `${label} : `, bold: true, size: 22 }),
-        new TextRun({ text: value, size: 22 }),
+        new TextRun({ text, bold: true, size: 22, color: TEAL }),
       ],
     })
   }
 
-  // Helper : crée un paragraphe de texte simple
-  function bodyParagraph(text: string): Paragraph {
+  function bullet(text: string): Paragraph {
     return new Paragraph({
-      text,
-      spacing: { after: 100 },
-      style: 'Normal',
+      spacing: { after: 60 },
+      indent: { left: 360 },
+      children: [new TextRun({ text: `– ${text}`, size: 21 })],
     })
   }
 
-  // Contenu principal
-  const children: Paragraph[] = []
-
-  // ── En-tête praticien ──
-  if (praticienSettings) {
-    const nomPraticien = [
-      praticienSettings.titre,
-      praticienSettings.prenom,
-      praticienSettings.nom,
-    ].filter(Boolean).join(' ')
-
-    if (nomPraticien) {
-      children.push(new Paragraph({
-        children: [new TextRun({ text: nomPraticien, bold: true, size: 28 })],
-        spacing: { after: 60 },
-      }))
-    }
-    if (praticienSettings.specialite) {
-      children.push(new Paragraph({
-        children: [new TextRun({ text: praticienSettings.specialite, size: 24, color: '6B7280' })],
-        spacing: { after: 60 },
-      }))
-    }
-    if (praticienSettings.adresse_cabinet) {
-      children.push(new Paragraph({
-        children: [new TextRun({ text: praticienSettings.adresse_cabinet, size: 20, color: '6B7280' })],
-        spacing: { after: 40 },
-      }))
-    }
-    if (praticienSettings.telephone_cabinet) {
-      children.push(new Paragraph({
-        children: [new TextRun({ text: `Tél : ${praticienSettings.telephone_cabinet}`, size: 20, color: '6B7280' })],
-        spacing: { after: 40 },
-      }))
-    }
-    if (praticienSettings.rpps) {
-      children.push(new Paragraph({
-        children: [new TextRun({ text: `N° RPPS : ${praticienSettings.rpps}`, size: 20, color: '6B7280' })],
-        spacing: { after: 40 },
-      }))
-    }
-    children.push(new Paragraph({ text: '', spacing: { after: 200 } }))
+  function subHeader(text: string): Paragraph {
+    return new Paragraph({
+      spacing: { after: 80, before: 120 },
+      children: [new TextRun({ text, bold: true, italics: true, size: 21, color: NAVY })],
+    })
   }
 
-  // ── Titre du document ──
+  function body(text: string): Paragraph {
+    return new Paragraph({
+      spacing: { after: 80 },
+      children: [new TextRun({ text, size: 21 })],
+    })
+  }
+
+  function labelValue(label: string, value: string): Paragraph {
+    return new Paragraph({
+      spacing: { after: 80 },
+      children: [
+        new TextRun({ text: `${label} : `, bold: true, size: 21 }),
+        new TextRun({ text: value, size: 21 }),
+      ],
+    })
+  }
+
+  // ── En-tête cabinet (tableau bordé) ──
+  const headerBoxChildren: Paragraph[] = []
+
+  if (nomCabinet) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+      children: [new TextRun({ text: nomCabinet.toUpperCase(), bold: true, size: 28, color: TEAL })],
+    }))
+  }
+
+  if (nomPraticien) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+      children: [new TextRun({ text: nomPraticien, bold: true, size: 24, color: NAVY })],
+    }))
+  }
+
+  if (ps?.specialite) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+      children: [new TextRun({ text: ps.specialite, size: 20, color: '444444' })],
+    }))
+  }
+
+  if (ps?.adresse_cabinet) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 30 },
+      children: [new TextRun({ text: ps.adresse_cabinet, size: 19, color: '666666' })],
+    }))
+  }
+
+  const contactLine = [
+    ps?.telephone_cabinet,
+    ps?.email_cabinet,
+  ].filter(Boolean).join('  |  ')
+  if (contactLine) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 30 },
+      children: [new TextRun({ text: contactLine, size: 19, color: '666666' })],
+    }))
+  }
+
+  if (tagline) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 0 },
+      children: [new TextRun({ text: tagline, size: 18, italics: true, color: TEAL })],
+    }))
+  }
+
+  if (headerBoxChildren.length === 0) {
+    headerBoxChildren.push(new Paragraph({ text: '' }))
+  }
+
+  const headerTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            margins: { top: 220, bottom: 200, left: 360, right: 360 },
+            borders: {
+              top:    { style: BorderStyle.SINGLE, size: 6, color: TEAL },
+              bottom: { style: BorderStyle.SINGLE, size: 6, color: TEAL },
+              left:   { style: BorderStyle.SINGLE, size: 6, color: TEAL },
+              right:  { style: BorderStyle.SINGLE, size: 6, color: TEAL },
+            },
+            children: headerBoxChildren,
+          }),
+        ],
+      }),
+    ],
+  })
+
+  // ── Corps du document ──
+  const children: (Paragraph | Table)[] = []
+
+  // En-tête
+  children.push(headerTable)
+  children.push(sp(300))
+
+  // Nom du patient
   children.push(new Paragraph({
-    text: 'COMPTE RENDU DE BILAN',
-    heading: HeadingLevel.HEADING_1,
     alignment: AlignmentType.CENTER,
-    spacing: { after: 120 },
+    spacing: { after: 80 },
+    children: [new TextRun({ text: patientLabel, bold: true, size: 32, color: NAVY })],
   }))
 
+  // Date
   children.push(new Paragraph({
-    children: [new TextRun({ text: `Date d'examen : ${dateBilan}`, size: 22, italics: true })],
-    alignment: AlignmentType.CENTER,
-    spacing: { after: 400 },
+    alignment: AlignmentType.RIGHT,
+    spacing: { after: 300 },
+    children: [new TextRun({ text: dateBilan, size: 20, color: '555555' })],
   }))
 
-  // ── Informations patient ──
-  children.push(sectionTitle('Informations Patient'))
-
-  children.push(labelValue('Nom', `${patient.prenom} ${patient.nom}`))
-  if (dob) {
-    children.push(labelValue('Date de naissance', `${dob}${age ? ` (${age})` : ''}`))
-  }
-  if (patient.telephone) {
-    children.push(labelValue('Téléphone', patient.telephone))
-  }
-
-  // ── Sections cliniques ──
-  const sectionsActives = praticienSettings?.sections_actives
-  const isActive = (key: string): boolean => {
-    if (!sectionsActives) return true
-    return (sectionsActives as Record<string, boolean>)[key] !== false
+  // Phrase d'introduction
+  if (nomPraticien || age) {
+    const agePart = age ? `, ${age} ans` : ''
+    const intro = `Veuillez trouver ci-joint le compte rendu clinique de ${patientLabel}${agePart}, réalisé dans le cadre d'un bilan complet.`
+    children.push(new Paragraph({
+      spacing: { after: 300 },
+      children: [new TextRun({ text: intro, size: 21 })],
+    }))
   }
 
-  if (isActive('motif') && f.motif_consultation) {
-    children.push(sectionTitle('Motif de consultation'))
-    children.push(bodyParagraph(f.motif_consultation))
-  }
+  // ── Contenu : compte_rendu_final ou formulaire ──
+  if (bilan.compte_rendu_final) {
+    // Rendu intelligent ligne par ligne
+    const lines = bilan.compte_rendu_final.split('\n')
+    let prevEmpty = true
 
-  // Douleurs
-  if (isActive('douleur')) {
-    const hasDouleur = f.douleur_localisation || f.douleur_intensite || f.douleur_type || f.douleur_evolution
-    if (hasDouleur) {
-      children.push(sectionTitle('Douleurs'))
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const trimmed = line.trim()
+
+      if (!trimmed) {
+        children.push(sp(80))
+        prevEmpty = true
+        continue
+      }
+
+      if (trimmed.startsWith('▸')) {
+        children.push(subHeader(trimmed.replace(/^▸\s*/, '')))
+        prevEmpty = false
+        continue
+      }
+
+      if (trimmed.startsWith('–') || trimmed.startsWith('-') || trimmed.startsWith('•')) {
+        children.push(bullet(trimmed.replace(/^[–\-•]\s*/, '')))
+        prevEmpty = false
+        continue
+      }
+
+      // Heuristique titre de section : courte + suit une ligne vide + n'est pas une phrase
+      const looksLikeTitle = prevEmpty
+        && trimmed.length < 80
+        && !trimmed.endsWith('.')
+        && (trimmed === trimmed[0].toUpperCase() + trimmed.slice(1))
+
+      if (looksLikeTitle) {
+        children.push(sectionHeader(trimmed))
+      } else {
+        children.push(body(trimmed))
+      }
+
+      prevEmpty = false
+    }
+  } else {
+    // Fallback : formulaire sans notes_libres
+    const f = bilan.form_data
+    const sa = ps?.sections_actives as Record<string, boolean> | undefined
+    const active = (key: string) => !sa || sa[key] !== false
+
+    if (active('motif') && f.motif_consultation) {
+      children.push(sectionHeader('Motif de consultation'))
+      children.push(body(f.motif_consultation))
+    }
+
+    if (active('douleur') && (f.douleur_localisation || f.douleur_type || f.douleur_intensite || f.douleur_evolution)) {
+      children.push(sectionHeader('Douleurs'))
       if (f.douleur_localisation) children.push(labelValue('Localisation', f.douleur_localisation))
       if (f.douleur_type) children.push(labelValue('Type', f.douleur_type))
       if (f.douleur_intensite) children.push(labelValue('Intensité', f.douleur_intensite))
       if (f.douleur_evolution) children.push(labelValue('Évolution', f.douleur_evolution))
     }
-  }
 
-  // Antécédents
-  if (isActive('antecedents')) {
-    const hasAnt = f.antecedents_medicaux || f.antecedents_chirurgicaux || f.antecedents_traumatiques || f.traitements_en_cours
-    if (hasAnt) {
-      children.push(sectionTitle('Antécédents'))
+    if (active('antecedents') && (f.antecedents_medicaux || f.antecedents_chirurgicaux || f.antecedents_traumatiques || f.traitements_en_cours)) {
+      children.push(sectionHeader('Antécédents'))
       if (f.antecedents_medicaux) children.push(labelValue('Médicaux', f.antecedents_medicaux))
       if (f.antecedents_chirurgicaux) children.push(labelValue('Chirurgicaux', f.antecedents_chirurgicaux))
       if (f.antecedents_traumatiques) children.push(labelValue('Traumatiques', f.antecedents_traumatiques))
       if (f.traitements_en_cours) children.push(labelValue('Traitements en cours', f.traitements_en_cours))
     }
-  }
 
-  // Examen postural
-  if (isActive('postural')) {
-    const hasPost = f.postural_vue_frontale || f.postural_vue_sagittale || f.postural_vue_posterieure || f.postural_observations
-    if (hasPost) {
-      children.push(sectionTitle('Examen postural statique'))
+    if (active('postural') && (f.postural_vue_frontale || f.postural_vue_sagittale || f.postural_vue_posterieure || f.postural_observations)) {
+      children.push(sectionHeader('Examen postural statique'))
       if (f.postural_vue_frontale) children.push(labelValue('Vue frontale', f.postural_vue_frontale))
       if (f.postural_vue_sagittale) children.push(labelValue('Vue sagittale', f.postural_vue_sagittale))
       if (f.postural_vue_posterieure) children.push(labelValue('Vue postérieure', f.postural_vue_posterieure))
-      if (f.postural_observations) children.push(labelValue('Observations', f.postural_observations))
+      if (f.postural_observations) children.push(body(f.postural_observations))
     }
-  }
 
-  // Analyse dynamique
-  if (isActive('dynamique')) {
-    const hasDyn = f.dynamique_marche || f.dynamique_course || f.dynamique_observations
-    if (hasDyn) {
-      children.push(sectionTitle('Analyse dynamique'))
+    if (active('dynamique') && (f.dynamique_marche || f.dynamique_course || f.dynamique_observations)) {
+      children.push(sectionHeader('Analyse dynamique'))
       if (f.dynamique_marche) children.push(labelValue('Marche', f.dynamique_marche))
       if (f.dynamique_course) children.push(labelValue('Course / geste sportif', f.dynamique_course))
-      if (f.dynamique_observations) children.push(labelValue('Observations', f.dynamique_observations))
+      if (f.dynamique_observations) children.push(body(f.dynamique_observations))
     }
-  }
 
-  // Examen podologique
-  if (isActive('podologie')) {
-    const hasPod = f.podologie_morphologie || f.podologie_appuis || f.podologie_chaussage || f.podologie_observations
-    if (hasPod) {
-      children.push(sectionTitle('Examen podologique'))
+    if (active('podologie') && (f.podologie_morphologie || f.podologie_appuis || f.podologie_chaussage || f.podologie_observations)) {
+      children.push(sectionHeader('Examen podologique'))
       if (f.podologie_morphologie) children.push(labelValue('Morphologie', f.podologie_morphologie))
       if (f.podologie_appuis) children.push(labelValue('Appuis plantaires', f.podologie_appuis))
       if (f.podologie_chaussage) children.push(labelValue('Chaussage', f.podologie_chaussage))
-      if (f.podologie_observations) children.push(labelValue('Observations', f.podologie_observations))
+      if (f.podologie_observations) children.push(body(f.podologie_observations))
     }
-  }
 
-  // Musculo-articulaire
-  if (isActive('musculo')) {
-    const hasMus = f.musculo_amplitudes || f.musculo_testing || f.musculo_tensions || f.musculo_observations
-    if (hasMus) {
-      children.push(sectionTitle('Analyse musculaire et articulaire'))
-      if (f.musculo_amplitudes) children.push(labelValue('Amplitudes articulaires', f.musculo_amplitudes))
-      if (f.musculo_testing) children.push(labelValue('Testing musculaire', f.musculo_testing))
-      if (f.musculo_tensions) children.push(labelValue('Tensions / raideurs', f.musculo_tensions))
-      if (f.musculo_observations) children.push(labelValue('Observations', f.musculo_observations))
+    if (active('musculo') && (f.musculo_amplitudes || f.musculo_testing || f.musculo_tensions || f.musculo_observations)) {
+      children.push(sectionHeader('Analyse musculaire et articulaire'))
+      if (f.musculo_amplitudes) children.push(labelValue('Amplitudes', f.musculo_amplitudes))
+      if (f.musculo_testing) children.push(labelValue('Testing', f.musculo_testing))
+      if (f.musculo_tensions) children.push(labelValue('Tensions', f.musculo_tensions))
+      if (f.musculo_observations) children.push(body(f.musculo_observations))
     }
-  }
 
-  // Mandibulaire / oculaire
-  if (isActive('mandibulaire')) {
-    const hasMandb = f.mandibulaire_observations || f.oculaire_observations
-    if (hasMandb) {
-      children.push(sectionTitle('Observations mandibulaires / oculaires'))
+    if (active('mandibulaire') && (f.mandibulaire_observations || f.oculaire_observations)) {
+      children.push(sectionHeader('Observations mandibulaires / oculaires'))
       if (f.mandibulaire_observations) children.push(labelValue('Mandibulaire', f.mandibulaire_observations))
       if (f.oculaire_observations) children.push(labelValue('Oculaire', f.oculaire_observations))
     }
+
+    if (active('conclusion') && f.conclusion_clinique) {
+      children.push(sectionHeader('Conclusion clinique'))
+      children.push(body(f.conclusion_clinique))
+    }
+
+    if (active('axes') && f.axes_therapeutiques) {
+      children.push(sectionHeader('Axes thérapeutiques'))
+      children.push(body(f.axes_therapeutiques))
+    }
+
+    if (active('exercices') && f.exercices_conseils) {
+      children.push(sectionHeader('Exercices et conseils'))
+      children.push(body(f.exercices_conseils))
+    }
+    // notes_libres intentionnellement exclus
   }
 
-  if (isActive('conclusion') && f.conclusion_clinique) {
-    children.push(sectionTitle('Conclusion clinique'))
-    children.push(bodyParagraph(f.conclusion_clinique))
-  }
-
-  if (isActive('axes') && f.axes_therapeutiques) {
-    children.push(sectionTitle('Axes thérapeutiques'))
-    children.push(bodyParagraph(f.axes_therapeutiques))
-  }
-
-  if (isActive('exercices') && f.exercices_conseils) {
-    children.push(sectionTitle('Exercices et conseils'))
-    children.push(bodyParagraph(f.exercices_conseils))
-  }
-
-  if (f.notes_libres) {
-    children.push(sectionTitle('Notes complémentaires'))
-    children.push(bodyParagraph(f.notes_libres))
-  }
-
-  // Si compte rendu final disponible
-  if (bilan.compte_rendu_final) {
-    children.push(new Paragraph({ text: '', spacing: { after: 200 } }))
-    children.push(sectionTitle('Compte rendu synthétique (généré par IA)'))
+  // ── Signature ──
+  children.push(sp(400))
+  children.push(new Paragraph({
+    alignment: AlignmentType.RIGHT,
+    spacing: { after: 80 },
+    children: [new TextRun({ text: `${ville}, le ${dateBilan}`, size: 20, color: '444444' })],
+  }))
+  children.push(sp(200))
+  if (nomPraticien) {
     children.push(new Paragraph({
-      children: [new TextRun({ text: 'Ce document est une aide à la rédaction. Le praticien reste responsable de sa validation.', italics: true, size: 18, color: '6B7280' })],
-      spacing: { after: 120 },
+      alignment: AlignmentType.RIGHT,
+      spacing: { after: 60 },
+      children: [new TextRun({ text: nomPraticien, bold: true, size: 22, color: NAVY })],
     }))
-    // Découpe le compte rendu en paragraphes
-    bilan.compte_rendu_final.split('\n').forEach((line: string) => {
-      if (line.trim()) {
-        children.push(new Paragraph({
-          text: line,
-          spacing: { after: 80 },
-        }))
-      }
-    })
+  }
+  if (ps?.specialite) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      spacing: { after: 0 },
+      children: [new TextRun({ text: ps.specialite, size: 20, color: '666666' })],
+    }))
   }
 
-  // Construit le document Word
+  // ── Construit le document ──
   const doc = new Document({
     styles: {
       default: {
-        document: {
-          run: { font: 'Calibri', size: 22 },
-        },
+        document: { run: { font: 'Calibri', size: 21 } },
       },
-      paragraphStyles: [
-        {
-          id: 'Heading1',
-          name: 'Heading 1',
-          run: { bold: true, size: 32, color: '1E3A5F' },
-        },
-        {
-          id: 'Heading2',
-          name: 'Heading 2',
-          run: { bold: true, size: 24, color: '1D4ED8' },
-        },
-      ],
     },
     sections: [
       {
         properties: {
           type: SectionType.CONTINUOUS,
-          page: {
-            margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 },
-          },
+          page: { margin: { top: 1134, bottom: 1134, left: 1440, right: 1440 } },
         },
         headers: {
           default: new Header({
             children: [
               new Paragraph({
-                children: [
-                  new TextRun({
-                    text: 'Althea — Dossier clinique confidentiel',
-                    size: 16,
-                    color: '9CA3AF',
-                    italics: true,
-                  }),
-                ],
                 alignment: AlignmentType.RIGHT,
+                children: [new TextRun({ text: 'Document clinique confidentiel', size: 16, color: 'AAAAAA', italics: true })],
               }),
             ],
           }),
@@ -346,19 +384,13 @@ export async function GET(req: Request) {
           default: new Footer({
             children: [
               new Paragraph({
-                children: [
-                  new TextRun({
-                    text: 'Document généré par Althea — Aide à la rédaction clinique — ',
-                    size: 16,
-                    color: '9CA3AF',
-                  }),
-                  new TextRun({
-                    children: ['Page ', PageNumber.CURRENT, ' / ', PageNumber.TOTAL_PAGES],
-                    size: 16,
-                    color: '9CA3AF',
-                  }),
-                ],
                 alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: 'Page ', size: 16, color: 'AAAAAA' }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 16, color: 'AAAAAA' }),
+                  new TextRun({ text: ' / ', size: 16, color: 'AAAAAA' }),
+                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: 'AAAAAA' }),
+                ],
               }),
             ],
           }),
@@ -369,10 +401,8 @@ export async function GET(req: Request) {
   })
 
   const buffer = await Packer.toBuffer(doc)
-
   const filename = `bilan_${patient.nom.toLowerCase()}_${patient.prenom.toLowerCase()}_${bilan.date_bilan}.docx`
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_.-]/g, '')
+    .replace(/\s+/g, '_').replace(/[^a-z0-9_.-]/g, '')
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

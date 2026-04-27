@@ -29,6 +29,8 @@ export async function PUT(req: Request) {
 
   const payload = {
     user_id: user.id,
+    nom_cabinet: body.nom_cabinet ?? '',
+    tagline: body.tagline ?? '',
     titre: body.titre ?? '',
     prenom: body.prenom ?? '',
     nom: body.nom ?? '',

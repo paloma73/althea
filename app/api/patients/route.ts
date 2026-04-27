@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
   const body = await req.json()
-  const { prenom, nom, date_naissance, telephone, email, notes_generales } = body
+  const { civilite, prenom, nom, date_naissance, telephone, email, notes_generales } = body
 
   if (!prenom || !nom) {
     return NextResponse.json({ error: 'Prénom et nom requis' }, { status: 400 })
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     .from('patients')
     .insert({
       user_id: user.id,
+      civilite: civilite || null,
       prenom: prenom.trim(),
       nom: nom.trim(),
       date_naissance: date_naissance || null,

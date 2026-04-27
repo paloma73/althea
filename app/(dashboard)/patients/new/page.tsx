@@ -11,6 +11,7 @@ export default function NewPatientPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
+    civilite: '',
     prenom: '',
     nom: '',
     date_naissance: '',
@@ -19,7 +20,7 @@ export default function NewPatientPage() {
     notes_generales: '',
   })
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   }
 
@@ -51,19 +52,34 @@ export default function NewPatientPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      {/* Retour */}
       <Link href="/patients" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" />
         Retour aux patients
       </Link>
 
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Nouveau patient</h1>
+        <h1 className="text-2xl font-bold text-foreground">Nouveau patient</h1>
         <p className="text-sm text-muted-foreground mt-1">Renseignez les informations de base du patient.</p>
       </div>
 
-      <form className="bg-white rounded-xl border border-border p-6 space-y-5">
-        <div className="grid grid-cols-2 gap-4">
+      <form className="bg-white rounded-2xl border border-border p-6 space-y-5 shadow-sm">
+        {/* Civilité + Prénom + Nom */}
+        <div className="grid grid-cols-[120px_1fr_1fr] gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Civilité</label>
+            <select
+              name="civilite"
+              value={form.civilite}
+              onChange={handleChange}
+              className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
+            >
+              <option value="">—</option>
+              <option value="Mme">Mme</option>
+              <option value="M.">M.</option>
+              <option value="Dr">Dr</option>
+              <option value="Pr">Pr</option>
+            </select>
+          </div>
           <Field label="Prénom *" name="prenom" value={form.prenom} onChange={handleChange} required />
           <Field label="Nom *" name="nom" value={form.nom} onChange={handleChange} required />
         </div>
@@ -83,12 +99,12 @@ export default function NewPatientPage() {
             onChange={handleChange}
             rows={3}
             placeholder="Informations complémentaires, contexte général…"
-            className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-ring resize-none"
+            className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-sm focus:ring-2 focus:ring-ring resize-none"
           />
         </div>
 
         {error && (
-          <p className="text-sm text-destructive bg-destructive/5 px-3 py-2 rounded-lg">{error}</p>
+          <p className="text-sm text-destructive bg-destructive/5 px-3 py-2 rounded-xl">{error}</p>
         )}
 
         <div className="flex gap-3 pt-2">
@@ -96,7 +112,7 @@ export default function NewPatientPage() {
             type="button"
             disabled={loading}
             onClick={e => handleSubmit(e, 'bilan')}
-            className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2.5 px-4 rounded-lg text-sm transition disabled:opacity-60"
+            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition shadow-md shadow-blue-600/25 disabled:opacity-60"
           >
             Créer et saisir un bilan
           </button>
@@ -104,7 +120,7 @@ export default function NewPatientPage() {
             type="button"
             disabled={loading}
             onClick={e => handleSubmit(e, 'patient')}
-            className="flex-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2.5 px-4 rounded-lg text-sm transition disabled:opacity-60"
+            className="flex-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2.5 px-4 rounded-xl text-sm transition disabled:opacity-60"
           >
             Enregistrer le patient
           </button>
@@ -133,7 +149,7 @@ function Field({
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
+        className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
       />
     </div>
   )

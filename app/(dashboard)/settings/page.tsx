@@ -29,6 +29,8 @@ export default function SettingsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Profil state
+  const [nomCabinet, setNomCabinet] = useState('')
+  const [tagline, setTagline] = useState('')
   const [titre, setTitre] = useState('')
   const [prenom, setPrenom] = useState('')
   const [nom, setNom] = useState('')
@@ -66,6 +68,8 @@ export default function SettingsPage() {
         if (settingsRes.ok) {
           const { settings } = await settingsRes.json()
           if (settings) {
+            setNomCabinet(settings.nom_cabinet ?? '')
+            setTagline(settings.tagline ?? '')
             setTitre(settings.titre ?? '')
             setPrenom(settings.prenom ?? '')
             setNom(settings.nom ?? '')
@@ -103,6 +107,8 @@ export default function SettingsPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          nom_cabinet: nomCabinet,
+          tagline,
           titre,
           prenom,
           nom,
@@ -201,6 +207,24 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground -mt-3">
               Ces informations apparaissent dans l'en-tête des exports Word.
             </p>
+
+            <FormField
+              label="Nom du cabinet"
+              placeholder="Orthopédie Savoie Mont Blanc"
+              value={nomCabinet}
+              onChange={setNomCabinet}
+            />
+
+            <FormField
+              label="Accroche / spécialités (ligne sous l'adresse)"
+              placeholder="Analyse podologique – Bilan postural | Semelles orthopédiques sur mesure"
+              value={tagline}
+              onChange={setTagline}
+            />
+
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-medium text-muted-foreground mb-4">Praticien</p>
+            </div>
 
             <div className="grid grid-cols-3 gap-4">
               <FormField

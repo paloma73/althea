@@ -5,6 +5,7 @@
 export interface Patient {
   id: string
   user_id: string
+  civilite: string | null
   prenom: string
   nom: string
   date_naissance: string | null
@@ -123,6 +124,8 @@ export type SectionKey =
 export interface PraticienSettings {
   id: string
   user_id: string
+  nom_cabinet: string
+  tagline: string
   titre: string
   prenom: string
   nom: string
