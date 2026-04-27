@@ -38,6 +38,8 @@ export default function SettingsPage() {
   const [specialite, setSpecialite] = useState('')
   const [rpps, setRpps] = useState('')
   const [adresseCabinet, setAdresseCabinet] = useState('')
+  const [codePostal, setCodePostal] = useState('')
+  const [commune, setCommune] = useState('')
   const [telephoneCabinet, setTelephoneCabinet] = useState('')
   const [emailCabinet, setEmailCabinet] = useState('')
 
@@ -84,6 +86,8 @@ export default function SettingsPage() {
             setSpecialite(settings.specialite ?? '')
             setRpps(settings.rpps ?? '')
             setAdresseCabinet(settings.adresse_cabinet ?? '')
+            setCodePostal(settings.code_postal ?? '')
+            setCommune(settings.commune ?? '')
             setTelephoneCabinet(settings.telephone_cabinet ?? '')
             setEmailCabinet(settings.email_cabinet ?? '')
             if (settings.sections_actives) {
@@ -123,6 +127,8 @@ export default function SettingsPage() {
           specialite,
           rpps,
           adresse_cabinet: adresseCabinet,
+          code_postal: codePostal,
+          commune,
           telephone_cabinet: telephoneCabinet,
           email_cabinet: emailCabinet,
           sections_actives: sectionsActives,
@@ -358,11 +364,26 @@ export default function SettingsPage() {
             />
 
             <FormField
-              label="Adresse du cabinet"
-              placeholder="12 rue des Fleurs, 75001 Paris"
+              label="Adresse (rue)"
+              placeholder="80 galeries de la Chartreuse"
               value={adresseCabinet}
               onChange={setAdresseCabinet}
             />
+
+            <div className="grid grid-cols-[140px_1fr] gap-4">
+              <FormField
+                label="Code postal"
+                placeholder="73000"
+                value={codePostal}
+                onChange={setCodePostal}
+              />
+              <FormField
+                label="Commune / Ville"
+                placeholder="Barberaz"
+                value={commune}
+                onChange={setCommune}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

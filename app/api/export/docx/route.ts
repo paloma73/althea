@@ -37,7 +37,6 @@ export async function GET(req: Request) {
   const dateBilan = new Date(bilan.date_bilan).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
-  const ville = ps?.adresse_cabinet?.split(' ').slice(-2).join(' ') ?? 'le'
 
   const age = patient.date_naissance
     ? new Date().getFullYear() - new Date(patient.date_naissance).getFullYear()
@@ -169,11 +168,21 @@ export async function GET(req: Request) {
     }))
   }
 
-  if (ps?.adresse_cabinet) {
+  const adresseLigne1 = ps?.adresse_cabinet ?? ''
+  const adresseLigne2 = [ps?.code_postal, ps?.commune].filter(Boolean).join(' ')
+
+  if (adresseLigne1) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: adresseLigne2 ? 10 : 30 },
+      children: [new TextRun({ text: adresseLigne1, size: 19, color: '666666' })],
+    }))
+  }
+  if (adresseLigne2) {
     headerBoxChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 30 },
-      children: [new TextRun({ text: ps.adresse_cabinet, size: 19, color: '666666' })],
+      children: [new TextRun({ text: adresseLigne2, size: 19, color: '666666' })],
     }))
   }
 
@@ -380,7 +389,7 @@ export async function GET(req: Request) {
   children.push(new Paragraph({
     alignment: AlignmentType.RIGHT,
     spacing: { after: 80 },
-    children: [new TextRun({ text: `${ville}, le ${dateBilan}`, size: 20, color: '444444' })],
+    children: [new TextRun({ text: `Le ${dateBilan}`, size: 20, color: '444444' })],
   }))
   children.push(sp(200))
   if (nomPraticien) {

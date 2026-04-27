@@ -135,6 +135,8 @@ export interface PraticienSettings {
   specialite: string
   rpps: string
   adresse_cabinet: string
+  code_postal: string
+  commune: string
   telephone_cabinet: string
   email_cabinet: string
   sections_actives: Record<SectionKey, boolean>

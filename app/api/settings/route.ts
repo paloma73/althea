@@ -37,6 +37,8 @@ export async function PUT(req: Request) {
     specialite: body.specialite ?? '',
     rpps: body.rpps ?? '',
     adresse_cabinet: body.adresse_cabinet ?? '',
+    code_postal: body.code_postal ?? '',
+    commune: body.commune ?? '',
     telephone_cabinet: body.telephone_cabinet ?? '',
     email_cabinet: body.email_cabinet ?? '',
     sections_actives: body.sections_actives ?? null,
