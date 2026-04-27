@@ -126,6 +126,9 @@ export interface PraticienSettings {
   user_id: string
   nom_cabinet: string
   tagline: string
+  logo_url: string | null
+  logo_width: number
+  logo_height: number
   titre: string
   prenom: string
   nom: string

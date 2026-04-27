@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Upload, FileText, Trash2, ChevronDown, Check } from 'lucide-react'
-import type { PraticienSettings, SectionKey, KnowledgeDoc } from '@/types'
+import { Save, Loader2, Upload, FileText, Trash2, ImageIcon, X } from 'lucide-react'
+import type { SectionKey, KnowledgeDoc } from '@/types'
 import { DEFAULT_SECTIONS_ACTIVES, DEFAULT_SECTIONS_LABELS } from '@/types'
+import Image from 'next/image'
 
 // ─────────────────────────────────────────────
 // Section metadata for the compte-rendu tab
@@ -44,6 +45,12 @@ export default function SettingsPage() {
   const [sectionsActives, setSectionsActives] = useState<Record<SectionKey, boolean>>({ ...DEFAULT_SECTIONS_ACTIVES })
   const [sectionsLabels, setSectionsLabels] = useState<Record<SectionKey, string>>({ ...DEFAULT_SECTIONS_LABELS })
 
+  // Logo state
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+
   // Knowledge docs state
   const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>([])
   const [uploading, setUploading] = useState(false)
@@ -68,6 +75,7 @@ export default function SettingsPage() {
         if (settingsRes.ok) {
           const { settings } = await settingsRes.json()
           if (settings) {
+            setLogoUrl(settings.logo_url ?? null)
             setNomCabinet(settings.nom_cabinet ?? '')
             setTagline(settings.tagline ?? '')
             setTitre(settings.titre ?? '')
@@ -127,6 +135,49 @@ export default function SettingsPage() {
       showToast('Erreur lors de la sauvegarde')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function uploadLogo(file: File) {
+    if (!['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'].includes(file.type)) {
+      setLogoError('Format non supporté. Utilisez PNG, JPG ou SVG.')
+      return
+    }
+    setLogoUploading(true)
+    setLogoError(null)
+    try {
+      const dims = await new Promise<{ width: number; height: number }>(resolve => {
+        const img = document.createElement('img')
+        const url = URL.createObjectURL(file)
+        img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url) }
+        img.src = url
+      })
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('width', String(dims.width))
+      fd.append('height', String(dims.height))
+      const res = await fetch('/api/settings/logo', { method: 'POST', body: fd })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setLogoUrl(data.logo_url)
+      showToast('Logo enregistré')
+    } catch {
+      setLogoError('Erreur lors de l\'upload du logo.')
+    } finally {
+      setLogoUploading(false)
+    }
+  }
+
+  async function deleteLogo() {
+    setLogoUploading(true)
+    try {
+      await fetch('/api/settings/logo', { method: 'DELETE' })
+      setLogoUrl(null)
+      showToast('Logo supprimé')
+    } catch {
+      showToast('Erreur lors de la suppression')
+    } finally {
+      setLogoUploading(false)
     }
   }
 
@@ -202,6 +253,51 @@ export default function SettingsPage() {
       {/* ── ONGLET PROFIL ── */}
       {activeTab === 'profil' && (
         <div className="space-y-5">
+          {/* Logo */}
+          <div className="bg-white rounded-xl border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Logo du cabinet</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Apparaît en haut de l'export Word. PNG, JPG ou SVG recommandé.</p>
+            </div>
+
+            {logoUrl ? (
+              <div className="flex items-center gap-4">
+                <div className="relative border border-border rounded-xl p-3 bg-muted/20">
+                  <img src={logoUrl} alt="Logo cabinet" className="h-16 max-w-[220px] object-contain" />
+                </div>
+                <button
+                  onClick={deleteLogo}
+                  disabled={logoUploading}
+                  className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition"
+                >
+                  {logoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                  Supprimer
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  className="hidden"
+                  onChange={e => e.target.files?.[0] && uploadLogo(e.target.files[0])}
+                />
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoUploading}
+                  className="flex items-center gap-2 border-2 border-dashed border-border rounded-xl px-6 py-4 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition w-full justify-center"
+                >
+                  {logoUploading
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Upload en cours…</>
+                    : <><ImageIcon className="w-4 h-4" /> Cliquer pour ajouter un logo</>
+                  }
+                </button>
+                {logoError && <p className="text-xs text-destructive mt-2">{logoError}</p>}
+              </div>
+            )}
+          </div>
+
           <div className="bg-white rounded-xl border border-border p-6 space-y-5">
             <h2 className="text-base font-semibold text-foreground">Informations du praticien</h2>
             <p className="text-xs text-muted-foreground -mt-3">

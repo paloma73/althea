@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   BorderStyle, PageNumber, Footer, Header, SectionType,
-  Table, TableRow, TableCell, WidthType, ShadingType,
+  Table, TableRow, TableCell, WidthType, ShadingType, ImageRun,
 } from 'docx'
 
 export async function GET(req: Request) {
@@ -101,10 +101,45 @@ export async function GET(req: Request) {
     })
   }
 
+  // ── Logo (fetch depuis Supabase Storage) ──
+  let logoBuffer: Buffer | null = null
+  let logoType: 'png' | 'jpg' | 'gif' | 'bmp' = 'png'
+  const logoW = ps?.logo_width ?? 180
+  const logoH = ps?.logo_height ?? 60
+
+  if (ps?.logo_url) {
+    try {
+      const res = await fetch(ps.logo_url)
+      if (res.ok) {
+        const ct = res.headers.get('content-type') ?? ''
+        if (ct.includes('jpeg') || ct.includes('jpg')) logoType = 'jpg'
+        else if (ct.includes('gif')) logoType = 'gif'
+        else if (ct.includes('bmp')) logoType = 'bmp'
+        else logoType = 'png'
+        const arrayBuffer = await res.arrayBuffer()
+        logoBuffer = Buffer.from(arrayBuffer)
+      }
+    } catch {
+      // Logo inaccessible — on continue sans
+    }
+  }
+
   // ── En-tête cabinet (tableau bordé) ──
   const headerBoxChildren: Paragraph[] = []
 
-  if (nomCabinet) {
+  if (logoBuffer) {
+    headerBoxChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [
+        new ImageRun({
+          type: logoType,
+          data: logoBuffer,
+          transformation: { width: logoW, height: logoH },
+        }),
+      ],
+    }))
+  } else if (nomCabinet) {
     headerBoxChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 60 },
