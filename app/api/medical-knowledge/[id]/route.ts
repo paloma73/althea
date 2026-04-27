@@ -6,6 +6,11 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (!adminEmail || user.email !== adminEmail) {
+    return NextResponse.json({ error: 'Accès réservé à l\'administrateur' }, { status: 403 })
+  }
+
   const { error } = await supabase
     .from('medical_knowledge')
     .delete()

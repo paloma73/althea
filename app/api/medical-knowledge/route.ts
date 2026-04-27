@@ -24,10 +24,16 @@ export async function GET() {
   return NextResponse.json({ entries: data ?? [] })
 }
 
+function isAdmin(email: string | undefined): boolean {
+  const adminEmail = process.env.ADMIN_EMAIL
+  return !!adminEmail && email === adminEmail
+}
+
 export async function POST(req: Request) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (!isAdmin(user.email)) return NextResponse.json({ error: 'Accès réservé à l\'administrateur' }, { status: 403 })
 
   const contentType = req.headers.get('content-type') ?? ''
 
