@@ -188,9 +188,10 @@ export default function SettingsPage() {
   }
 
   async function uploadKnowledgeDoc(files: FileList) {
-    const validFiles = Array.from(files).filter(f => f.type === 'application/pdf')
+    const accepted = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic']
+    const validFiles = Array.from(files).filter(f => accepted.includes(f.type))
     if (validFiles.length === 0) {
-      setUploadError('Seuls les fichiers PDF sont acceptés.')
+      setUploadError('Format non supporté. Acceptés : PDF, JPG, PNG, WEBP, GIF.')
       return
     }
 
@@ -487,7 +488,7 @@ export default function SettingsPage() {
           <div className="bg-white rounded-xl border border-border p-6 space-y-4">
             <h2 className="text-base font-semibold text-foreground">Base documentaire médicale</h2>
             <p className="text-xs text-muted-foreground -mt-2">
-              Importez des PDF de référence (protocoles, guides cliniques). Leur contenu sera automatiquement injecté dans le contexte de l'IA lors de la génération des comptes rendus (3 docs max, 500 caractères par doc).
+              Importez vos PDF ou photos (pages de livre, cours, protocoles). Le texte est extrait automatiquement par IA et injecté dans le copilote et la génération des comptes rendus.
             </p>
 
             {/* Zone d'upload */}
@@ -500,7 +501,7 @@ export default function SettingsPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic"
                 multiple
                 className="hidden"
                 onChange={e => e.target.files && uploadKnowledgeDoc(e.target.files)}
@@ -509,14 +510,18 @@ export default function SettingsPage() {
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   <p className="text-sm text-muted-foreground">Extraction du texte en cours…</p>
+                  <p className="text-xs text-muted-foreground/60">Les images sont analysées par IA, cela peut prendre quelques secondes.</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
-                  <Upload className="w-6 h-6 text-muted-foreground" />
+                  <div className="flex gap-2 text-muted-foreground">
+                    <FileText className="w-5 h-5" />
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    Glissez vos PDF ici ou <span className="text-primary font-medium">cliquez pour choisir</span>
+                    Glissez vos fichiers ici ou <span className="text-primary font-medium">cliquez pour choisir</span>
                   </p>
-                  <p className="text-xs text-muted-foreground/60">Protocoles, guides cliniques, références bibliographiques</p>
+                  <p className="text-xs text-muted-foreground/60">PDF, JPG, PNG, WEBP — pages de livre, cours, protocoles</p>
                 </div>
               )}
             </div>
@@ -531,7 +536,10 @@ export default function SettingsPage() {
                 {knowledgeDocs.map(doc => (
                   <div key={doc.id} className="flex items-center justify-between px-4 py-3 border border-border rounded-lg">
                     <div className="flex items-center gap-3 min-w-0">
-                      <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                      {/\.(jpg|jpeg|png|webp|gif|heic)$/i.test(doc.filename)
+                        ? <ImageIcon className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                        : <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                      }
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{doc.filename}</p>
                         <p className="text-xs text-muted-foreground">

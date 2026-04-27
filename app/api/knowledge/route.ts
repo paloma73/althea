@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { openai } from '@/lib/openai/client'
 import pdf from 'pdf-parse'
+
+const ACCEPTED_TYPES = {
+  pdf: ['application/pdf'],
+  image: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic'],
+}
 
 export async function GET() {
   const supabase = createClient()
@@ -32,20 +38,65 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Fichier manquant' }, { status: 400 })
   }
 
-  if (file.type !== 'application/pdf') {
-    return NextResponse.json({ error: 'Seuls les fichiers PDF sont acceptés' }, { status: 400 })
+  const isPdf = ACCEPTED_TYPES.pdf.includes(file.type)
+  const isImage = ACCEPTED_TYPES.image.includes(file.type)
+
+  if (!isPdf && !isImage) {
+    return NextResponse.json(
+      { error: 'Format non supporté. Acceptés : PDF, JPG, PNG, WEBP, GIF.' },
+      { status: 400 }
+    )
   }
 
-  // Extrait le texte du PDF
+  const arrayBuffer = await file.arrayBuffer()
   let contentText = ''
-  try {
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    const parsed = await pdf(buffer)
-    contentText = parsed.text?.trim() ?? ''
-  } catch (err) {
-    console.error('[knowledge POST] pdf-parse error:', err)
-    contentText = ''
+
+  if (isPdf) {
+    try {
+      const buffer = Buffer.from(arrayBuffer)
+      const parsed = await pdf(buffer)
+      contentText = parsed.text?.trim() ?? ''
+    } catch (err) {
+      console.error('[knowledge POST] pdf-parse error:', err)
+      contentText = ''
+    }
+  } else {
+    // Image → GPT-4o Vision extrait le texte
+    try {
+      const base64 = Buffer.from(arrayBuffer).toString('base64')
+      const mimeType = file.type === 'image/heic' ? 'image/jpeg' : file.type
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64}`,
+                  detail: 'high',
+                },
+              },
+              {
+                type: 'text',
+                text: `Transcris fidèlement tout le contenu textuel médical ou clinique visible dans cette image.
+Il peut s'agir d'une page de livre, d'un cours, d'un protocole, d'une slide ou de notes manuscrites.
+Retranscris le texte de manière structurée en français. Si c'est un tableau, retranscris-le. Si c'est un schéma avec des annotations, décris le schéma puis liste les annotations.
+Ne reformule pas — transcris fidèlement le contenu visible.`,
+              },
+            ],
+          },
+        ],
+        max_tokens: 2000,
+      })
+
+      contentText = completion.choices[0]?.message?.content?.trim() ?? ''
+    } catch (err) {
+      console.error('[knowledge POST] vision error:', err)
+      return NextResponse.json({ error: 'Erreur lors de l\'analyse de l\'image' }, { status: 500 })
+    }
   }
 
   const { data, error } = await supabase
