@@ -101,7 +101,7 @@ export async function GET(req: Request) {
     })
   }
 
-  // ── Logo (fetch depuis Supabase Storage) ──
+  // ── Logo (stocké en data URL base64) ──
   let logoBuffer: Buffer | null = null
   let logoType: 'png' | 'jpg' | 'gif' | 'bmp' = 'png'
   const logoW = ps?.logo_width ?? 180
@@ -109,15 +109,21 @@ export async function GET(req: Request) {
 
   if (ps?.logo_url) {
     try {
-      const res = await fetch(ps.logo_url)
-      if (res.ok) {
-        const ct = res.headers.get('content-type') ?? ''
-        if (ct.includes('jpeg') || ct.includes('jpg')) logoType = 'jpg'
-        else if (ct.includes('gif')) logoType = 'gif'
-        else if (ct.includes('bmp')) logoType = 'bmp'
-        else logoType = 'png'
-        const arrayBuffer = await res.arrayBuffer()
-        logoBuffer = Buffer.from(arrayBuffer)
+      if (ps.logo_url.startsWith('data:')) {
+        const [header, base64] = ps.logo_url.split(',')
+        const mime = header.match(/data:([^;]+)/)?.[1] ?? 'image/png'
+        if (mime.includes('jpeg') || mime.includes('jpg')) logoType = 'jpg'
+        else if (mime.includes('gif')) logoType = 'gif'
+        else if (mime.includes('bmp')) logoType = 'bmp'
+        logoBuffer = Buffer.from(base64, 'base64')
+      } else {
+        // URL externe (ancien format)
+        const res = await fetch(ps.logo_url)
+        if (res.ok) {
+          const ct = res.headers.get('content-type') ?? ''
+          if (ct.includes('jpeg') || ct.includes('jpg')) logoType = 'jpg'
+          logoBuffer = Buffer.from(await res.arrayBuffer())
+        }
       }
     } catch {
       // Logo inaccessible — on continue sans
