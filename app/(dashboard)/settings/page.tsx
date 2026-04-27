@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Upload, FileText, Trash2, ImageIcon, X } from 'lucide-react'
-import type { SectionKey, KnowledgeDoc } from '@/types'
+import { Save, Loader2, Upload, FileText, Trash2, ImageIcon, X, Database, ChevronDown } from 'lucide-react'
+import type { SectionKey, KnowledgeDoc, MedicalKnowledge } from '@/types'
 import { DEFAULT_SECTIONS_ACTIVES, DEFAULT_SECTIONS_LABELS } from '@/types'
 import Image from 'next/image'
 
@@ -24,7 +24,7 @@ const SECTION_KEYS: SectionKey[] = [
 ]
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'profil' | 'compte-rendu' | 'base-doc'>('profil')
+  const [activeTab, setActiveTab] = useState<'profil' | 'compte-rendu' | 'base-doc' | 'base-commune'>('profil')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -53,11 +53,20 @@ export default function SettingsPage() {
   const [logoError, setLogoError] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
 
-  // Knowledge docs state
+  // Knowledge docs state (base personnelle)
   const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Base médicale commune state
+  const [medicalEntries, setMedicalEntries] = useState<MedicalKnowledge[]>([])
+  const [commonUploading, setCommonUploading] = useState(false)
+  const [commonError, setCommonError] = useState<string | null>(null)
+  const [commonSpecialty, setCommonSpecialty] = useState('général')
+  const [commonCategory, setCommonCategory] = useState('référence')
+  const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
+  const commonFileInputRef = useRef<HTMLInputElement>(null)
 
   function showToast(msg: string) {
     setToastMessage(msg)
@@ -69,9 +78,10 @@ export default function SettingsPage() {
     async function loadData() {
       setLoading(true)
       try {
-        const [settingsRes, docsRes] = await Promise.all([
+        const [settingsRes, docsRes, medicalRes] = await Promise.all([
           fetch('/api/settings'),
           fetch('/api/knowledge'),
+          fetch('/api/medical-knowledge'),
         ])
 
         if (settingsRes.ok) {
@@ -102,6 +112,11 @@ export default function SettingsPage() {
         if (docsRes.ok) {
           const { docs } = await docsRes.json()
           setKnowledgeDocs(docs ?? [])
+        }
+
+        if (medicalRes.ok) {
+          const { entries } = await medicalRes.json()
+          setMedicalEntries(entries ?? [])
         }
       } catch (err) {
         console.error('[settings load]', err)
@@ -224,6 +239,41 @@ export default function SettingsPage() {
     }
   }
 
+  async function uploadToCommonBase(files: FileList) {
+    const accepted = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic']
+    const validFiles = Array.from(files).filter(f => accepted.includes(f.type))
+    if (validFiles.length === 0) {
+      setCommonError('Format non supporté. Acceptés : PDF, JPG, PNG, WEBP.')
+      return
+    }
+    setCommonUploading(true)
+    setCommonError(null)
+    for (const file of validFiles) {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('specialty', commonSpecialty)
+      fd.append('category', commonCategory)
+      const res = await fetch('/api/medical-knowledge', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const err = await res.json()
+        setCommonError(err.error ?? `Erreur pour "${file.name}"`)
+        continue
+      }
+      const data = await res.json()
+      setMedicalEntries(prev => [data.entry, ...prev])
+      showToast(`"${file.name}" ajouté à la base commune`)
+    }
+    setCommonUploading(false)
+  }
+
+  async function deleteFromCommonBase(id: string) {
+    const res = await fetch(`/api/medical-knowledge/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setMedicalEntries(prev => prev.filter(e => e.id !== id))
+      showToast('Entrée supprimée')
+    }
+  }
+
   function toggleSection(key: SectionKey) {
     setSectionsActives(prev => ({ ...prev, [key]: !prev[key] }))
   }
@@ -254,6 +304,10 @@ export default function SettingsPage() {
         </TabButton>
         <TabButton active={activeTab === 'base-doc'} onClick={() => setActiveTab('base-doc')}>
           Base documentaire
+        </TabButton>
+        <TabButton active={activeTab === 'base-commune'} onClick={() => setActiveTab('base-commune')}>
+          <Database className="w-3.5 h-3.5 mr-1.5" />
+          Base commune
         </TabButton>
       </div>
 
@@ -562,6 +616,153 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground text-center py-4">
                 Aucun document dans la base documentaire.
               </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ONGLET BASE MÉDICALE COMMUNE ── */}
+      {activeTab === 'base-commune' && (
+        <div className="space-y-5">
+          <div className="bg-white rounded-xl border border-border p-6 space-y-5">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Base médicale commune</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ajoutez vos propres documents à la base partagée par tous les utilisateurs : livres, cours, protocoles, articles.
+                Le texte est extrait automatiquement et injecté dans le copilote lors de chaque analyse.
+              </p>
+            </div>
+
+            {/* Sélecteurs spécialité / catégorie */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Spécialité</label>
+                <select
+                  value={commonSpecialty}
+                  onChange={e => setCommonSpecialty(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="général">Général</option>
+                  <option value="podologie">Podologie</option>
+                  <option value="orthopédie">Orthopédie</option>
+                  <option value="posturologie">Posturologie</option>
+                  <option value="biomécanique">Biomécanique</option>
+                  <option value="neuro-postural">Neuro-postural</option>
+                  <option value="rhumatologie">Rhumatologie</option>
+                  <option value="kinésithérapie">Kinésithérapie</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Catégorie</label>
+                <select
+                  value={commonCategory}
+                  onChange={e => setCommonCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="référence">Référence / cours</option>
+                  <option value="physiopathologie">Physiopathologie</option>
+                  <option value="diagnostic">Diagnostic</option>
+                  <option value="test">Test clinique</option>
+                  <option value="orthèse">Orthèse</option>
+                  <option value="exercice">Exercice</option>
+                  <option value="orientation">Orientation thérapeutique</option>
+                  <option value="red_flag">Red flag</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Zone d'upload */}
+            <div
+              onDrop={e => { e.preventDefault(); if (e.dataTransfer.files) uploadToCommonBase(e.dataTransfer.files) }}
+              onDragOver={e => e.preventDefault()}
+              onClick={() => commonFileInputRef.current?.click()}
+              className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/[0.02] transition-colors"
+            >
+              <input
+                ref={commonFileInputRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic"
+                multiple
+                className="hidden"
+                onChange={e => e.target.files && uploadToCommonBase(e.target.files)}
+              />
+              {commonUploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Extraction du texte en cours…</p>
+                  <p className="text-xs text-muted-foreground/60">Les images sont analysées par IA, patientez quelques secondes.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex gap-2 text-muted-foreground">
+                    <FileText className="w-5 h-5" />
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Glissez vos fichiers ici ou <span className="text-primary font-medium">cliquez pour choisir</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground/60">PDF, JPG, PNG, WEBP — livres, cours, protocoles, articles</p>
+                </div>
+              )}
+            </div>
+
+            {commonError && (
+              <p className="text-xs text-destructive">{commonError}</p>
+            )}
+          </div>
+
+          {/* Liste des entrées */}
+          <div className="bg-white rounded-xl border border-border p-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">
+                Contenu de la base ({medicalEntries.length} entrées)
+              </h3>
+            </div>
+
+            {medicalEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Aucune entrée dans la base médicale commune.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {medicalEntries.map(entry => (
+                  <div key={entry.id} className="border border-border rounded-lg overflow-hidden">
+                    <div
+                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                      onClick={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                            {entry.specialty}
+                          </span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {entry.category}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-foreground truncate">{entry.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedEntry === entry.id ? 'rotate-180' : ''}`} />
+                        <button
+                          onClick={e => { e.stopPropagation(); deleteFromCommonBase(entry.id) }}
+                          className="text-muted-foreground hover:text-destructive transition p-1 rounded"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {expandedEntry === entry.id && (
+                      <div className="px-4 pb-4 pt-1 border-t border-border bg-muted/20">
+                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-6">
+                          {entry.content}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
