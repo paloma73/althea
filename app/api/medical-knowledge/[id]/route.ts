@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -11,7 +11,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Accès réservé à l\'administrateur' }, { status: 403 })
   }
 
-  const { error } = await supabase
+  const admin = createServiceClient()
+  const { error } = await admin
     .from('medical_knowledge')
     .delete()
     .eq('id', params.id)

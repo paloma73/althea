@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { openai } from '@/lib/openai/client'
 import pdf from 'pdf-parse'
 
@@ -35,6 +35,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   if (!isAdmin(user.email)) return NextResponse.json({ error: 'Accès réservé à l\'administrateur' }, { status: 403 })
 
+  const admin = createServiceClient()
   const contentType = req.headers.get('content-type') ?? ''
 
   // ── Entrée manuelle (JSON) ──────────────────────────────────
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Titre et contenu requis' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from('medical_knowledge')
       .insert({
         specialty: specialty || 'général',
@@ -129,7 +130,7 @@ Ne reformule pas — transcris fidèlement ce qui est écrit.`,
     return NextResponse.json({ error: 'Impossible d\'extraire du texte de ce fichier' }, { status: 422 })
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from('medical_knowledge')
     .insert({
       specialty,

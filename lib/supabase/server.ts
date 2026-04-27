@@ -1,5 +1,5 @@
-// Client Supabase pour le serveur (Server Components, API Routes)
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export function createClient() {
@@ -24,5 +24,13 @@ export function createClient() {
         },
       },
     }
+  )
+}
+
+// Client service role — contourne le RLS, réservé aux opérations admin côté serveur
+export function createServiceClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
