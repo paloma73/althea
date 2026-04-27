@@ -32,6 +32,7 @@ export async function POST(req: Request) {
       model: 'whisper-1',
       language: 'fr',
       response_format: 'text',
+      prompt: `Dictée médicale en français. Vocabulaire clinique : bilan postural, podologie, orthèse plantaire, semelle orthopédique, posturologie, biomécanique, proprioception, valgus, varus, hallux valgus, pied plat, pied creux, supination, pronation, avant-pied, arrière-pied, métatarse, tibia, péroné, genou, rotule, hanche, bassin, rachis, lordose, cyphose, scoliose, déséquilibre postural, axe de charge, appui plantaire, boîterie, équilibre, tonus musculaire, rétraction, contracture, tendinite, fasciite plantaire, syndrome rotulien, entorse, arthrose, inflammation, douleur chronique, test de Romberg, test de stabilité, examen clinique, antécédents médicaux, traitement, prescription, kinésithérapie, ostéopathie, podologue, rhumatologue, orthopédiste.`,
     })
 
     return NextResponse.json({ text: transcription })
