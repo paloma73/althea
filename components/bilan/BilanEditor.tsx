@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Sparkles, Copy, Check, Loader2, FileDown, Mic, LayoutList } from 'lucide-react'
+import { ArrowLeft, Save, Sparkles, Copy, Check, Loader2, FileDown, Mic, LayoutList, Brain } from 'lucide-react'
 import type { Patient, Bilan, BilanFormData } from '@/types'
 import { formatDateLong } from '@/lib/utils'
 import BilanFormSection from './BilanFormSection'
@@ -12,6 +12,7 @@ import VoiceGlobal from './VoiceGlobal'
 import VoiceRecorder from './VoiceRecorder'
 import TemplateChips from './TemplateChips'
 import PdfUploader from '../pdf/PdfUploader'
+import CopilotePanel from './CopilotePanel'
 import { TEMPLATES, ANTECEDENTS_TEMPLATES } from '@/lib/templates'
 
 const EMPTY_FORM: BilanFormData = {
@@ -63,7 +64,7 @@ export default function BilanEditor({ patient, bilan }: Props) {
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'formulaire' | 'rendu'>('formulaire')
+  const [activeTab, setActiveTab] = useState<'formulaire' | 'copilote' | 'rendu'>('formulaire')
   const [inputMode, setInputMode] = useState<'formulaire' | 'dictee'>('formulaire')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [exportingDocx, setExportingDocx] = useState(false)
@@ -253,9 +254,13 @@ export default function BilanEditor({ patient, bilan }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-fit flex-wrap">
         <TabButton active={activeTab === 'formulaire'} onClick={() => setActiveTab('formulaire')}>
           Formulaire clinique
+        </TabButton>
+        <TabButton active={activeTab === 'copilote'} onClick={() => setActiveTab('copilote')}>
+          <Brain className="w-3.5 h-3.5 mr-1.5" />
+          Copilote
         </TabButton>
         <TabButton active={activeTab === 'rendu'} onClick={() => setActiveTab('rendu')}>
           Compte rendu
@@ -478,6 +483,15 @@ export default function BilanEditor({ patient, bilan }: Props) {
             </>
           )}
         </div>
+      )}
+
+      {/* ── ONGLET COPILOTE ── */}
+      {activeTab === 'copilote' && (
+        <CopilotePanel
+          formData={formData}
+          bilanId={bilanId}
+          patientId={patient.id}
+        />
       )}
 
       {/* ── ONGLET COMPTE RENDU ── */}

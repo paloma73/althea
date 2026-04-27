@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
   const sectionsActives = praticienSettings?.sections_actives as Partial<Record<SectionKey, boolean>> | undefined
 
-  // Récupère les documents de la base de connaissances
+  // Récupère les documents de la base personnelle du praticien
   const { data: knowledgeDocs } = await supabase
     .from('knowledge_docs')
     .select('content_text')
@@ -55,8 +55,21 @@ export async function POST(req: Request) {
     .map((doc: { content_text: string }) => doc.content_text)
     .filter(Boolean)
 
+  // Récupère la base médicale commune (entrées les plus pertinentes par catégorie)
+  const { data: medicalKnowledge } = await supabase
+    .from('medical_knowledge')
+    .select('specialty, category, title, content')
+    .eq('active', true)
+    .in('category', ['physiopathologie', 'diagnostic', 'orthèse', 'exercice'])
+    .limit(20)
+
+  const medicalTexts: string[] = (medicalKnowledge ?? [])
+    .map((e: { specialty: string; category: string; title: string; content: string }) =>
+      `[${e.specialty} — ${e.category}] ${e.title}: ${e.content.substring(0, 200)}`
+    )
+
   // Construction des prompts
-  const systemPrompt = buildSystemPrompt(knowledgeTexts)
+  const systemPrompt = buildSystemPrompt(knowledgeTexts, medicalTexts)
   const userPrompt = buildUserPrompt(patient, bilan, pdfTexts, sectionsActives)
 
   try {

@@ -185,3 +185,48 @@ export interface KnowledgeDoc {
   file_size: number
   created_at: string
 }
+
+// ─────────────────────────────────────────────
+// Base médicale commune
+// ─────────────────────────────────────────────
+
+export interface MedicalKnowledge {
+  id: string
+  specialty: string
+  category: string
+  title: string
+  content: string
+  tags: string[]
+  active: boolean
+  created_at: string
+}
+
+// ─────────────────────────────────────────────
+// Copilote clinique
+// ─────────────────────────────────────────────
+
+export interface ClinicalHypothesis {
+  titre: string
+  description: string
+  priorite: 'haute' | 'moyenne' | 'basse'
+}
+
+export interface ClinicalTest {
+  titre: string
+  description: string
+  indication: string
+}
+
+export interface RedFlag {
+  titre: string
+  description: string
+  action: string
+}
+
+export interface CopilotResult {
+  hypotheses: ClinicalHypothesis[]
+  diagnostics_differentiels: string[]
+  tests_complementaires: ClinicalTest[]
+  red_flags: RedFlag[]
+  orientations: string[]
+}

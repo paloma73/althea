@@ -4,7 +4,10 @@ import type { Patient, Bilan, SectionKey } from '@/types'
  * Construit le prompt système pour la génération de compte rendu.
  * Positionne l'IA comme assistant de rédaction, pas comme médecin.
  */
-export function buildSystemPrompt(knowledgeTexts: string[] = []): string {
+export function buildSystemPrompt(
+  knowledgeTexts: string[] = [],
+  medicalTexts: string[] = []
+): string {
   let prompt = `Tu es un assistant de rédaction clinique pour un professionnel de santé (orthopédiste, orthésiste, podologue, posturologue).
 
 Ton rôle est d'aider à rédiger un compte rendu clinique structuré et professionnel à partir des données saisies par le praticien.
@@ -21,12 +24,17 @@ RÈGLES ABSOLUES :
 - Longueur : complète mais concise. Adapte la longueur aux données disponibles.
 - Langue : français professionnel médical.`
 
+  if (medicalTexts.length > 0) {
+    const medicalContent = medicalTexts.join('\n')
+    prompt += `\n\nBASE DE CONNAISSANCES MÉDICALE (terminologie et références cliniques) :\n${medicalContent}\n\nUtilise cette base pour enrichir la terminologie et la précision clinique du compte rendu.`
+  }
+
   if (knowledgeTexts.length > 0) {
     const knowledgeContent = knowledgeTexts
       .slice(0, 3)
-      .map((t, i) => `--- Référence ${i + 1} ---\n${t.substring(0, 500)}`)
+      .map((t, i) => `--- Document praticien ${i + 1} ---\n${t.substring(0, 500)}`)
       .join('\n\n')
-    prompt += `\n\nBASE DE CONNAISSANCES DU PRATICIEN (références documentaires) :\n${knowledgeContent}\n\nUtilise ces références pour enrichir la terminologie clinique si pertinent, sans inventer de données.`
+    prompt += `\n\nDOCUMENTS PERSONNELS DU PRATICIEN :\n${knowledgeContent}\n\nPriorise ces documents pour la terminologie spécifique au praticien.`
   }
 
   return prompt
