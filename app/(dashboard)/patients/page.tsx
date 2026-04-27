@@ -74,10 +74,10 @@ export default async function PatientsPage({ searchParams }: Props) {
                       <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white text-sm font-bold flex items-center justify-center shadow-sm">
                         {getInitials(patient.prenom, patient.nom)}
                       </div>
-                      <div>
-                        <p className="font-semibold text-foreground">{patient.prenom} {patient.nom}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">{patient.prenom} {patient.nom}</p>
                         {patient.email && (
-                          <p className="text-xs text-muted-foreground">{patient.email}</p>
+                          <p className="text-xs text-muted-foreground truncate">{patient.email}</p>
                         )}
                       </div>
                     </div>

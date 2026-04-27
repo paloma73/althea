@@ -39,11 +39,11 @@ export default async function BilansPage() {
               {bilans.map((bilan: Bilan & { patient: Patient }) => (
                 <tr key={bilan.id} className="hover:bg-blue-50/40 transition-colors group">
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white text-xs font-bold flex items-center justify-center shadow-sm">
                         {bilan.patient ? getInitials(bilan.patient.prenom, bilan.patient.nom) : '?'}
                       </div>
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-foreground truncate">
                         {bilan.patient ? `${bilan.patient.prenom} ${bilan.patient.nom}` : '—'}
                       </span>
                     </div>

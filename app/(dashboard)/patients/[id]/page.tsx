@@ -44,14 +44,14 @@ export default async function PatientPage({ params }: Props) {
         {/* Bandeau couleur */}
         <div className="h-2 bg-gradient-to-r from-blue-500 to-cyan-500" />
 
-        <div className="p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
+        <div className="p-4 md:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 text-white text-xl font-bold flex items-center justify-center shadow-md shadow-blue-500/30 flex-shrink-0">
                 {getInitials(patient.prenom, patient.nom)}
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-foreground truncate">
                   {patient.prenom} {patient.nom}
                 </h1>
                 {patient.date_naissance && (
@@ -63,7 +63,7 @@ export default async function PatientPage({ params }: Props) {
             </div>
             <Link
               href={`/patients/${patient.id}/bilan/new`}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-md shadow-blue-600/25"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-md shadow-blue-600/25 flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
               Nouveau bilan
@@ -80,9 +80,9 @@ export default async function PatientPage({ params }: Props) {
                 </div>
               )}
               {patient.email && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium text-foreground">{patient.email}</span>
+                <div className="flex items-center gap-2 text-sm min-w-0">
+                  <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium text-foreground truncate">{patient.email}</span>
                 </div>
               )}
               <div className="flex items-center gap-2 text-sm">
